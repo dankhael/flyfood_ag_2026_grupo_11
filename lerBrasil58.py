@@ -1,4 +1,4 @@
-from file import *
+#from file import *
 
 objArq = open("edgesbrasil58.tsp")
 #se você quiser uma lista onde cada objeto será uma string
