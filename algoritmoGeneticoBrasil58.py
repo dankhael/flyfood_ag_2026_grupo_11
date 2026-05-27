@@ -1,5 +1,7 @@
 import random
+import statistics
 from lerBrasil58 import distancias, custoCaminho, inicializaPopulacao, calculaAptidao
+
 
 # ---------------------------------------------------------------
 # Algoritmo Genetico para o problema do Caixeiro Viajante (Brasil58)
@@ -12,11 +14,11 @@ from lerBrasil58 import distancias, custoCaminho, inicializaPopulacao, calculaAp
 # ---------------------------------------------------------------
 
 QTDE_CIDADES      = 58
-TAMANHO_POPULACAO = 150
-NUM_GERACOES      = 1000
+TAMANHO_POPULACAO = 200
+NUM_GERACOES      = 2000
 TAXA_CROSSOVER    = 0.9
-TAXA_MUT_INVERSAO = 0.2
-TAXA_MUT_SCRAMBLE = 0.05
+TAXA_MUT_INVERSAO = 0.05
+TAXA_MUT_SCRAMBLE = 0.001
 TAMANHO_TORNEIO   = 3
 TAMANHO_ELITE     = 2
 
@@ -82,15 +84,15 @@ def mutacaoScramble(individuo):
     individuo[a:b+1] = trecho
     return individuo
 
-
 # ---------------------------------------------------------------
 # 5) Aplica as mutacoes de acordo com as taxas configuradas.
 # ---------------------------------------------------------------
-def aplicaMutacoes(individuo):
-    if random.random() < TAXA_MUT_INVERSAO:
+def aplicaMutacoes(individuo, bonus):
+    if random.random() < TAXA_MUT_INVERSAO + bonus:
         individuo = mutacaoInversion(individuo)
-    if random.random() < TAXA_MUT_SCRAMBLE:
+    if random.random() < TAXA_MUT_SCRAMBLE + bonus:
         individuo = mutacaoScramble(individuo)
+        
     return individuo
 
 
@@ -100,6 +102,8 @@ def aplicaMutacoes(individuo):
 def algoritmoGenetico():
     populacao = inicializaPopulacao(TAMANHO_POPULACAO, QTDE_CIDADES)
     aptidoes  = calculaAptidao(populacao, distancias)
+    melhorAtual = min(aptidoes)
+    estagnacao = 0
 
     melhorCustoGlobal = min(aptidoes)
     melhorIndividuo   = populacao[aptidoes.index(melhorCustoGlobal)][:]
@@ -120,26 +124,47 @@ def algoritmoGenetico():
             else:
                 filho1, filho2 = pai1[:], pai2[:]
 
-            filho1 = aplicaMutacoes(filho1)
-            filho2 = aplicaMutacoes(filho2)
+            filho1 = aplicaMutacoes(filho1, estagnacao/100)
+            filho2 = aplicaMutacoes(filho2, estagnacao/100)
 
             novaPopulacao.append(filho1)
             if len(novaPopulacao) < TAMANHO_POPULACAO:
                 novaPopulacao.append(filho2)
-
-        populacao = novaPopulacao
+        populacao += novaPopulacao
         aptidoes  = calculaAptidao(populacao, distancias)
+        
+        if len(populacao) > TAMANHO_POPULACAO:
+            aptidaoindividuo = 0
+            medianaaptidao = statistics.median(aptidoes)
+            for i in populacao:
+                aptidaoindividuo = custoCaminho(i, distancias)
+                if aptidaoindividuo > melhorAtual or aptidaoindividuo > medianaaptidao:
+                    populacao.remove(i)
+            while len(populacao) > TAMANHO_POPULACAO:
+                # quero melhorar esta parte por que está basicamente removendo as cegas em caso de não ter individuos suficientes para remover
+                populacao.pop(0)
 
+        estagnacao += 1
+        aptidoes  = calculaAptidao(populacao, distancias)
         melhorAtual = min(aptidoes)
         if melhorAtual < melhorCustoGlobal:
+            estagnacao = 0
             melhorCustoGlobal = melhorAtual
             melhorIndividuo   = populacao[aptidoes.index(melhorAtual)][:]
 
+        if estagnacao > 50:
+            if random.random() < 0.5:
+                estagnacao = 0
+        
         if geracao % 50 == 0 or geracao == NUM_GERACOES - 1:
             print(f"Geracao {geracao:4d} | melhor atual: {melhorAtual} | melhor global: {melhorCustoGlobal}")
 
+
     return melhorIndividuo, melhorCustoGlobal
 
+
+# CUSTO ÓTIMO = 25.395
+# CUSTO 1% ACIMA DO ÓTIMO = 25.649
 
 if __name__ == "__main__":
     random.seed()  # remova o seed ou fixe para reproduzir
