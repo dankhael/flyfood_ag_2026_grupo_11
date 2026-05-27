@@ -13,7 +13,7 @@ from lerBrasil58 import distancias, custoCaminho, inicializaPopulacao, calculaAp
 
 QTDE_CIDADES      = 58
 TAMANHO_POPULACAO = 150
-NUM_GERACOES      = 1000
+NUM_GERACOES      = 10000
 TAXA_CROSSOVER    = 0.9
 TAXA_MUT_INVERSAO = 0.2
 TAXA_MUT_SCRAMBLE = 0.05
