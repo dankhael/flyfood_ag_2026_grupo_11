@@ -1,5 +1,5 @@
 import random
-from lerBrasil58 import distancias, custoCaminho, inicializaPopulacao, calculaAptidao
+from lerBrasil58 import distancias, qtdeCidades, inicializaPopulacao, calculaAptidao
 
 # ---------------------------------------------------------------
 # Algoritmo Genetico para o problema do Caixeiro Viajante (Brasil58)
@@ -11,7 +11,7 @@ from lerBrasil58 import distancias, custoCaminho, inicializaPopulacao, calculaAp
 #   - Elitismo: preserva os melhores individuos a cada geracao
 # ---------------------------------------------------------------
 
-QTDE_CIDADES      = 58
+QTDE_CIDADES      = qtdeCidades
 TAMANHO_POPULACAO = 150
 NUM_GERACOES      = 10000
 TAXA_CROSSOVER    = 0.9

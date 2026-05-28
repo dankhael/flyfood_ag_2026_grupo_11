@@ -28,6 +28,8 @@ Matematicamente, é um problema **NP-difícil**: o número de rotas possíveis c
 | `edgesbrasil58.tsp` | Dados das distâncias entre cidades |
 | `lerBrasil58.py` | Lê o arquivo, monta o dicionário de distâncias, define funções de custo e inicialização |
 | `algoritmoGeneticoBrasil58.py` | Loop principal do AG com seleção, crossover e mutação |
+| `conversorMatrizParaDistancias.py` | Converte uma matriz de pontos (R, A, B, ...) em arquivo de distâncias |
+| `exemplo_entrada.txt` | Exemplo de matriz de pontos para o conversor |
 
 ---
 
@@ -134,7 +136,46 @@ A cada 50 gerações o programa imprime o melhor custo atual e o melhor global. 
 
 ---
 
-## 6. Referências rápidas
+## 6. Rodando com sua própria matriz de pontos
+
+Para usar o AG com um problema arbitrário (ex.: um drone de entregas em uma grade), descreva os pontos numa matriz de texto e converta-a para o formato de distâncias:
+
+```
+4 5
+0 0 0 0 D
+0 A 0 0 0
+0 0 0 0 C
+R 0 B 0 0
+```
+
+- `R` = origem/retorno (obrigatório, único)
+- `A`, `B`, `C`, ... = pontos de entrega
+- `0` = posição vazia
+
+Converta para um arquivo **com nome diferente** de `edgesbrasil58.tsp` (assim você não perde o arquivo oficial do brasil58):
+
+```bash
+python conversorMatrizParaDistancias.py exemplo_entrada.txt meu_problema.tsp
+```
+
+Depois aponte o AG para esse arquivo via variável de ambiente `ARQUIVO_TSP`:
+
+```powershell
+# PowerShell
+$env:ARQUIVO_TSP = "meu_problema.tsp"
+python algoritmoGeneticoBrasil58.py
+```
+
+```bash
+# bash
+ARQUIVO_TSP=meu_problema.tsp python algoritmoGeneticoBrasil58.py
+```
+
+Sem a variável, o AG roda o brasil58 normalmente. O conversor calcula distâncias euclidianas; `lerBrasil58.py` detecta o número de cidades pelo arquivo, sem precisar mexer em constantes.
+
+---
+
+## 7. Referências rápidas
 
 - **TSP**: https://en.wikipedia.org/wiki/Travelling_salesman_problem
 - **Order Crossover (OX1)**: Davis, L. (1985)
