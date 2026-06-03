@@ -5,20 +5,22 @@ from lerBrasil58 import distancias, qtdeCidades, inicializaPopulacao, calculaApt
 # Algoritmo Genetico para o problema do Caixeiro Viajante (Brasil58)
 #
 # Operadores usados:
-#   - Selecao de pais: TORNEIO (k=3)
+#   - Selecao de pais: TORNEIO (k=5)
 #   - Crossover: ORDER CROSSOVER (OX1)
 #   - Mutacao: INVERSION + SCRAMBLE (cada uma com sua propria taxa)
-#   - Elitismo: preserva os melhores individuos a cada geracao
+#   - Selecao de sobreviventes: STEADY-STATE com eliminacao de duplicatas
+#     (mescla pais + filhos, descarta clones e mantem os melhores; o
+#     melhor individuo nunca e perdido e a diversidade e preservada)
 # ---------------------------------------------------------------
 
 QTDE_CIDADES      = qtdeCidades
-TAMANHO_POPULACAO = 150
-NUM_GERACOES      = 10000
+TAMANHO_POPULACAO = 200
+NUM_GERACOES      = 16000
 TAXA_CROSSOVER    = 0.9
-TAXA_MUT_INVERSAO = 0.2
-TAXA_MUT_SCRAMBLE = 0.05
-TAMANHO_TORNEIO   = 3
-TAMANHO_ELITE     = 2
+TAXA_MUT_INVERSAO = 0.5
+TAXA_MUT_SCRAMBLE = 0.10
+TAMANHO_TORNEIO   = 5
+NUM_FILHOS        = 50    # quantos filhos gerar por geracao (lambda)
 
 
 # ---------------------------------------------------------------
@@ -95,22 +97,72 @@ def aplicaMutacoes(individuo):
 
 
 # ---------------------------------------------------------------
-# 6) LOOP PRINCIPAL DO GA
+# 6) SELECAO DE SOBREVIVENTES - Steady-state (mu + lambda)
+#    Em vez do esquema "geracional" (em que os filhos substituem
+#    totalmente a populacao anterior), mesclamos pais + filhos em um
+#    unico conjunto e selecionamos os melhores como sobreviventes.
+#    Assim o melhor individuo nunca e perdido (elitismo implicito),
+#    conforme o lembrete do quadro: "salvar o melhor individuo".
+#
+#    ELIMINACAO DE DUPLICATAS: o steady-state elitista tende a encher
+#    a populacao de copias do melhor individuo, o que mata a diversidade
+#    e trava a busca cedo (convergencia prematura). Por isso priorizamos
+#    individuos UNICOS; rotas repetidas so entram para completar a
+#    populacao se nao houver unicos suficientes. Isso mantem a busca
+#    produtiva por muito mais geracoes e aproxima o resultado do otimo.
 # ---------------------------------------------------------------
-def algoritmoGenetico():
-    populacao = inicializaPopulacao(TAMANHO_POPULACAO, QTDE_CIDADES)
-    aptidoes  = calculaAptidao(populacao, distancias)
+def selecaoSobreviventes(populacao, aptidoes, filhos, aptidoesFilhos, tamanho):
+    # mescla o conjunto de pais com o de filhos, cada um com sua aptidao
+    combinados = list(zip(populacao, aptidoes)) + list(zip(filhos, aptidoesFilhos))
+    # ordena por custo (menor primeiro)
+    combinados.sort(key=lambda x: x[1])
+
+    # separa individuos unicos (1a ocorrencia) das duplicatas
+    vistos = set()
+    unicos, duplicatas = [], []
+    for ind, apt in combinados:
+        chave = tuple(ind)
+        if chave in vistos:
+            duplicatas.append((ind, apt))
+        else:
+            vistos.add(chave)
+            unicos.append((ind, apt))
+
+    # preenche com unicos; se faltar, completa com as melhores duplicatas
+    escolhidos = (unicos + duplicatas)[:tamanho]
+    sobreviventes  = [ind for ind, _ in escolhidos]
+    aptidoesSobrev = [apt for _, apt in escolhidos]
+    return sobreviventes, aptidoesSobrev
+
+
+# ---------------------------------------------------------------
+# 7) LOOP PRINCIPAL DO GA
+#    Os parametros sao opcionais: quando omitidos, usam os valores
+#    configurados no topo do modulo (instancia Brasil58). Informando-os
+#    e possivel rodar o GA sobre QUALQUER problema (ex.: uma grade do
+#    FLYFOOD convertida), o que tambem facilita os testes automatizados.
+#    'verbose' liga/desliga o log de progresso e 'intervaloLog' controla
+#    de quantas em quantas geracoes ele e impresso.
+# ---------------------------------------------------------------
+def algoritmoGenetico(dicDistancias=None, qtdeCidades=None, numGeracoes=None,
+                      tamanhoPopulacao=None, numFilhos=None,
+                      verbose=True, intervaloLog=50):
+    if dicDistancias    is None: dicDistancias    = distancias
+    if qtdeCidades      is None: qtdeCidades      = QTDE_CIDADES
+    if numGeracoes      is None: numGeracoes      = NUM_GERACOES
+    if tamanhoPopulacao is None: tamanhoPopulacao = TAMANHO_POPULACAO
+    if numFilhos        is None: numFilhos        = NUM_FILHOS
+
+    populacao = inicializaPopulacao(tamanhoPopulacao, qtdeCidades)
+    aptidoes  = calculaAptidao(populacao, dicDistancias)
 
     melhorCustoGlobal = min(aptidoes)
     melhorIndividuo   = populacao[aptidoes.index(melhorCustoGlobal)][:]
 
-    for geracao in range(NUM_GERACOES):
-        # ordena populacao por aptidao (menor custo primeiro) para o elitismo
-        ordenados = sorted(zip(populacao, aptidoes), key=lambda x: x[1])
-        novaPopulacao = [ind[:] for ind, _ in ordenados[:TAMANHO_ELITE]]
-
-        # preenche o resto da nova populacao
-        while len(novaPopulacao) < TAMANHO_POPULACAO:
+    for geracao in range(numGeracoes):
+        # gera os filhos (descendentes) a partir da populacao atual (pais)
+        filhos = []
+        while len(filhos) < numFilhos:
             pai1 = selecaoTorneio(populacao, aptidoes, TAMANHO_TORNEIO)
             pai2 = selecaoTorneio(populacao, aptidoes, TAMANHO_TORNEIO)
 
@@ -123,19 +175,25 @@ def algoritmoGenetico():
             filho1 = aplicaMutacoes(filho1)
             filho2 = aplicaMutacoes(filho2)
 
-            novaPopulacao.append(filho1)
-            if len(novaPopulacao) < TAMANHO_POPULACAO:
-                novaPopulacao.append(filho2)
+            filhos.append(filho1)
+            if len(filhos) < numFilhos:
+                filhos.append(filho2)
 
-        populacao = novaPopulacao
-        aptidoes  = calculaAptidao(populacao, distancias)
+        aptidoesFilhos = calculaAptidao(filhos, dicDistancias)
 
-        melhorAtual = min(aptidoes)
+        # STEADY-STATE: mescla pais + filhos e seleciona os sobreviventes
+        populacao, aptidoes = selecaoSobreviventes(
+            populacao, aptidoes, filhos, aptidoesFilhos, tamanhoPopulacao
+        )
+
+        # a selecao de sobreviventes ja devolve a populacao ordenada,
+        # entao o melhor da geracao esta na posicao 0
+        melhorAtual = aptidoes[0]
         if melhorAtual < melhorCustoGlobal:
             melhorCustoGlobal = melhorAtual
-            melhorIndividuo   = populacao[aptidoes.index(melhorAtual)][:]
+            melhorIndividuo   = populacao[0][:]
 
-        if geracao % 50 == 0 or geracao == NUM_GERACOES - 1:
+        if verbose and (geracao % intervaloLog == 0 or geracao == numGeracoes - 1):
             print(f"Geracao {geracao:4d} | melhor atual: {melhorAtual} | melhor global: {melhorCustoGlobal}")
 
     return melhorIndividuo, melhorCustoGlobal
