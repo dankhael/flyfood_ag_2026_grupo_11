@@ -18,7 +18,6 @@ Exemplo:
     R 0 B 0 0
 """
 
-import math
 import sys
 
 
@@ -41,7 +40,10 @@ def lerPontos(arquivo):
 
 
 def distancia(p1, p2):
-	return int(round(math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)))
+	# Distancia de MANHATTAN (|dx| + |dy|): o drone do FLYFOOD so se move na
+	# horizontal/vertical da grade ("dronometros"). Tem de ser a MESMA metrica
+	# usada pela forca bruta do FLYFOOD, senao os custos/rotas nao batem.
+	return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
 
 def gerarMatriz(pontos):
