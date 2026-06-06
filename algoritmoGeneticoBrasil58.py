@@ -15,12 +15,12 @@ from lerBrasil58 import distancias, qtdeCidades, inicializaPopulacao, calculaApt
 
 QTDE_CIDADES      = qtdeCidades
 TAMANHO_POPULACAO = 200
-NUM_GERACOES      = 16000
+NUM_GERACOES      = 5000
 TAXA_CROSSOVER    = 0.9
 TAXA_MUT_INVERSAO = 0.5
 TAXA_MUT_SCRAMBLE = 0.10
 TAMANHO_TORNEIO   = 5
-NUM_FILHOS        = 50    # quantos filhos gerar por geracao (lambda)
+NUM_FILHOS        = 100    # quantos filhos gerar por geracao (lambda)
 
 
 # ---------------------------------------------------------------
